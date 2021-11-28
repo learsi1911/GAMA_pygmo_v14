@@ -10,7 +10,8 @@ import random
 import subprocess
 import pickle # pygmo_search
 import psutil # pygmo_search
-from gama.search_methods.pygmo_search import SearchPygmo
+from gama.search_methods.pygmo_search import SearchPygmo #pygmo
+import math # pygmo
 import time
 import uuid
 from typing import (
@@ -110,7 +111,6 @@ class Gama(ABC):
         store: str = "logs",
     ):
         """
-
         Parameters
         ----------
         scoring: str, Metric or Tuple
@@ -118,59 +118,46 @@ class Gama(ABC):
             A string will be converted to Metric.
             A tuple must specify each metric with the same type (e.g. all str).
             See :ref:`Metrics` for built-in metrics.
-
         regularize_length: bool (default=True)
             If True, add pipeline length as an optimization metric.
             Short pipelines should then be preferred over long ones.
-
         max_pipeline_length: int, optional (default=None)
             If set, limit the maximum number of steps in any evaluated pipeline.
             Encoding and imputation are excluded.
-
         config: Dict
             Specifies available components and their valid hyperparameter settings.
             For more information, see :ref:`search_space_configuration`.
-
         random_state:  int, optional (default=None)
             Seed for the random number generators used in the process.
             However, with `n_jobs > 1`,
             there will be randomization introduced by multi-processing.
             For reproducible results, set this and use `n_jobs=1`.
-
         max_total_time: positive int (default=3600)
             Time in seconds that can be used for the `fit` call.
-
         max_eval_time: positive int, optional (default=None)
             Time in seconds that can be used to evaluate any one single individual.
             If None, set to 0.1 * max_total_time.
-
         n_jobs: int, optional (default=None)
             The amount of parallel processes that may be created to speed up `fit`.
             Accepted values are positive integers, -1 or None.
             If -1 is specified, multiprocessing.cpu_count() processes are created.
             If None is specified, multiprocessing.cpu_count() / 2 processes are created.
-
         max_memory_mb: int, optional (default=None)
             Sets the total amount of memory GAMA is allowed to use (in megabytes).
             If not set, GAMA will use as much as it needs.
             GAMA is not guaranteed to respect this limit at all times,
             but it should never violate it for too long.
-
         verbosity: int (default=logging.WARNING)
             Sets the level of log messages to be automatically output to terminal.
-
         search: BaseSearch (default=AsyncEA())
             Search method to use to find good pipelines. Should be instantiated.
-
         post_processing: BasePostProcessing (default=BestFitPostProcessing())
             Post-processing method to create a model after the search phase.
             Should be an instantiated subclass of BasePostProcessing.
-
         output_directory: str, optional (default=None)
             Directory to use to save GAMA output. This includes both intermediate
             results during search and logs.
             If set to None, generate a unique name ("gama_HEXCODE").
-
         store: str (default='logs')
             Determines which data is stored after each run:
              - 'nothing': keep nothing from this run
@@ -182,13 +169,16 @@ class Gama(ABC):
         # Gama._counter += 1
         # self.id_counter = Gama._counter
         # print("self.id_counter", self.id_counter)
-        print("max_eval_time", max_total_time)
-        # # Descomentar/comentar lo siguiente
         # print("max_eval_time", max_total_time)
-        # if max_total_time is not None:
-        #     max_total_time = int(max_total_time/5)
-        # print("New time is", max_total_time)
-        # # Hasta aqui
+#        # Descomentar/comentar lo siguiente
+#        print("max_eval_time", max_total_time)
+#        if max_total_time is not None:
+#            max_total_time = int(max_total_time/6)
+#        print("New time is", max_total_time)
+#        # Hasta aqui
+        
+        self._max_total_time_support = max_total_time
+        self._max_eval_time_support = max_eval_time
         
         if not output_directory:
             output_directory = f"gama_{str(uuid.uuid4())}"
@@ -245,16 +235,16 @@ class Gama(ABC):
                 logfile=os.path.join(self.output_directory, "memory.log"),
             ),
         )
-        if max_eval_time is None:
-            max_eval_time = round(0.1 * max_total_time)
-        if max_eval_time > max_total_time:
-            log.warning(
-                f"max_eval_time ({max_eval_time}) > max_total_time ({max_total_time}) "
-                f"is not allowed. max_eval_time set to {max_total_time}."
-            )
-            max_eval_time = max_total_time
-        self._max_eval_time = max_eval_time
-        self._time_manager = TimeKeeper(max_total_time)
+#        if max_eval_time is None:
+#            max_eval_time = round(0.1 * max_total_time)
+#        if max_eval_time > max_total_time:
+#            log.warning(
+#                f"max_eval_time ({max_eval_time}) > max_total_time ({max_total_time}) "
+#                f"is not allowed. max_eval_time set to {max_total_time}."
+#            )
+#            max_eval_time = max_total_time
+#        self._max_eval_time = max_eval_time
+#        self._time_manager = TimeKeeper(max_total_time)
         self._metrics: Tuple[Metric, ...] = scoring_to_metric(scoring)
         self._regularize_length = regularize_length
         self._search_method: BaseSearch = search
@@ -358,12 +348,10 @@ class Gama(ABC):
 
     def predict(self, x: Union[pd.DataFrame, np.ndarray]):
         """ Predict the target for input X.
-
         Parameters
         ----------
         x: pandas.DataFrame or numpy.ndarray
             A dataframe or array with the same number of columns as the input to `fit`.
-
         Returns
         -------
         numpy.ndarray
@@ -380,7 +368,6 @@ class Gama(ABC):
         **kwargs,
     ) -> np.ndarray:
         """ Predict the target for input found in the ARFF file.
-
         Parameters
         ----------
         file_path: str
@@ -393,7 +380,6 @@ class Gama(ABC):
             Encoding of the ARFF file.
         **kwargs:
             Any additional arguments for calls to pandas.read_csv or arff.load.
-
         Returns
         -------
         numpy.ndarray
@@ -409,14 +395,12 @@ class Gama(ABC):
         self, x: Union[pd.DataFrame, np.ndarray], y: Union[pd.Series, np.ndarray]
     ) -> float:
         """ Calculate `self.scoring` metric of the model on (x, y).
-
         Parameters
         ----------
         x: pandas.DataFrame or numpy.ndarray
             Data to predict target values for.
         y: pandas.Series or numpy.ndarray
             True values for the target.
-
         Returns
         -------
         float
@@ -437,7 +421,6 @@ class Gama(ABC):
         **kwargs,
     ) -> float:
         """ Calculate `self.scoring` metric of the model on data in the file.
-
         Parameters
         ----------
         file_path: str
@@ -449,7 +432,6 @@ class Gama(ABC):
             Encoding of the ARFF file.
         **kwargs:
             Any additional arguments for calls to pandas.read_csv or arff.load.
-
         Returns
         -------
         float
@@ -469,7 +451,6 @@ class Gama(ABC):
         **kwargs,
     ) -> None:
         """ Find and fit a model to predict the target column (last) from other columns.
-
         Parameters
         ----------
         file_path: str
@@ -484,7 +465,6 @@ class Gama(ABC):
             If None is given, random start candidates are generated.
         **kwargs:
             Any additional arguments for calls to pandas.read_csv or arff.load.
-
         """
         x, y = X_y_from_file(file_path, target_column, encoding, **kwargs)
         self.fit(x, y, warm_start)
@@ -496,14 +476,11 @@ class Gama(ABC):
         warm_start: Optional[List[Individual]] = None,
     ) -> "Gama":
         """ Find and fit a model to predict target y from X.
-
         Various possible machine learning pipelines will be fit to the (X,y) data.
         Using Genetic Programming, the pipelines chosen should lead to gradually
         better models. Pipelines will internally be validated using cross validation.
-
         After the search termination condition is met, the best found pipeline
         configuration is then used to train a final model on all provided data.
-
         Parameters
         ----------
         x: pandas.DataFrame or numpy.ndarray, shape = [n_samples, n_features]
@@ -515,7 +492,28 @@ class Gama(ABC):
             A list of individual to start the search  procedure with.
             If None is given, random start candidates are generated.
         """
-
+#        self._max_total_time_support = max_total_time
+#        self._max_eval_time_support = max_eval_time
+        path_use = os.getcwd()
+        path=path_use.replace(os.sep, '/')
+        path=path + "/" + "dictionary_info.pkl"
+        if os.path.isfile(path):  
+            sha = pickle.load(open(path, "rb"))
+            print("max_total_time gama", self._max_total_time_support)
+            self._max_total_time_support = math.floor(self._max_total_time_support/sha['time'])
+            print("max_total_time gama", self._max_total_time_support)
+            if self._max_eval_time_support is None:
+                self._max_eval_time_support = round(0.1 * self._max_total_time_support)
+            if self._max_eval_time_support > self._max_total_time_support:
+                log.warning(
+                    f"self._max_eval_time_support ({self._max_eval_time_support}) > self._max_total_time_support ({self._max_total_time_support}) "
+                    f"is not allowed. self._max_eval_time_support set to {self._max_total_time_support}."
+                )
+                self._max_eval_time_support = self._max_total_time_support
+            self._max_eval_time = self._max_eval_time_support
+            self._time_manager = TimeKeeper(self._max_total_time_support)
+            os.remove(path)
+            
         self._time_manager = TimeKeeper(self._time_manager.total_time)
 
         with self._time_manager.start_activity(
@@ -715,8 +713,34 @@ class Gama(ABC):
             with stopit.ThreadingTimeout(timeout):
                 self._search_method.dynamic_defaults(self._x, self._y, timeout)
                 self._search_method.search(self._operator_set, start_candidates=pop)
-        except KeyboardInterrupt:
-            log.info("Search phase terminated because of Keyboard Interrupt.")
+        except: 
+            self._final_pop = self._search_method.output
+            if isinstance(self._search_method, SearchPygmo) and (len(self._final_pop)<=50): #Porque ya no estamos considerando una variable independiente el "output" en el metodo de busqueda
+                print("la población venía vacía")
+                path_use = os.getcwd()
+                path = path_use.replace(os.sep, '/')
+                path = path + "/pickle_gama/"
+                for root, dirs, files, in os.walk(path):
+                    for file in files:
+                        if file.endswith(".pkl"):
+                            new_f_path = path + file
+                            if (file=="list_successive_halving.pkl") or (file=="archipelago_champions.pkl"):
+                                print(file)
+                            else:
+                                try:
+                                    new_lista = pickle.load(open(new_f_path, "rb"))
+                                except:
+                                    print("Exception", file)
+                                    new_lista = []
+                                self._final_pop = self._final_pop + new_lista
+            else:
+                self._final_pop = self._search_method.output
+                
+        print("ya pasaron los 13 segundos")
+        # Decomment from here
+        # except KeyboardInterrupt:
+        #    log.info("Search phase terminated because of Keyboard Interrupt.")
+        # To here
         self._final_pop = self._search_method.output
         print("Longitud de la población final en gama.py", len(self._final_pop))
         #if isinstance(self._search_method, SearchPygmo) and (len(self._final_pop)==0):
@@ -821,24 +845,18 @@ class Gama(ABC):
         self, file: Optional[str] = "gama_pipeline.py", raise_if_exists: bool = False
     ):
         """ Export a Python script which sets up the best found pipeline.
-
         Can only be called after `fit`.
-
         Example
         -------
         After the AutoML search process has completed (i.e. `fit` has been called),
         the model which has been found by GAMA may be exported to a Python file.
         The Python file will define the found pipeline or ensemble.
-
         .. code-block:: python
-
             automl = GamaClassifier()
             automl.fit(X, y)
             automl.export_script('my_pipeline_script.py')
-
         The resulting script will define a variable `pipeline` or `ensemble`,
         depending on the post-processing method that was used after search.
-
         Parameters
         ----------
         file: str, optional (default='gama_pipeline.py')
@@ -896,7 +914,6 @@ class Gama(ABC):
 
     def evaluation_completed(self, callback: Callable[[Evaluation], Any]) -> None:
         """ Register a callback function that is called when an evaluation is completed.
-
         Parameters
         ----------
         callback: Callable[[Evaluation], Any]
