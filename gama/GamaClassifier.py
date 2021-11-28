@@ -14,6 +14,10 @@ from gama.configuration.classification import clf_config
 from gama.utilities.metrics import scoring_to_metric
 import psutil # Search_pygmo
 import time # Search_pygmo
+import math # Search_pygmo
+import os
+import sys
+import shutil
 
 def on_terminate(proc):
     print("process {} terminated with exit code {}".format(proc, proc.returncode))
@@ -39,6 +43,17 @@ class GamaClassifier(Gama):
                     and not hasattr(alg(), "predict_proba")
                 )
             }
+            
+        # Delete from here
+        print("Eliminar folder python")
+        path_use = os.getcwd()
+        path = path_use.replace(os.sep, '/')
+        path = path + "/pickle_gama"
+        try:
+            shutil.rmtree(path)
+        except OSError as e:
+            print("Error: %s - %s." % (e.filename, e.strerror))
+        # To here
 
         self._label_encoder = None
         super().__init__(*args, **kwargs, config=config, scoring=scoring)
@@ -156,8 +171,89 @@ class GamaClassifier(Gama):
         
         
         # #**********************
-        # #Descomentar esto
-        # if isinstance(self._search_method, SearchPygmo):
+        #Descomentar esto
+
+        if isinstance(self._search_method, SearchPygmo):
+            print("Division of rungs")
+            import pickle
+            number_of_configurations = 500
+            minimum_resource = 100 
+            maximum_resource = len(y)
+            # maximum_resource = 150
+            reduction_factor = 2
+            minimum_early_stopping_rate = 1
+            # s_max = math.floor(math.log(maximum_resorce/minimum_resorce, reduction_factor))
+            max_rung = math.ceil(
+                math.log(maximum_resource / minimum_resource, reduction_factor)
+            )
+            rungs = range(minimum_early_stopping_rate, max_rung + 1)
+            print("rungs", list(rungs))
+            print("rungs", rungs)
+            sha = {}
+            sha['time'] = len(list(rungs))
+            print("len(list(rungs)) in Gama Classifier.py", len(list(rungs)))
+            path_use = os.getcwd()
+            path = path_use.replace(os.sep, '/')
+            path = path + "/" + "dictionary_info.pkl"
+            with open(path, 'wb') as f:
+                pickle.dump(sha, f)
+            X_support = x.copy()
+            y_support = y.copy()
+            for m in rungs:
+                n_m = math.ceil(number_of_configurations*(reduction_factor**(-m))) # In the paper of Successive is ni, number of configurations to use in the next step
+                print("n_m", n_m)
+                # r_m = math.ceil(minimum_resource*reduction_factor) #number of rows to use in the rung
+                r_m = math.ceil(minimum_resource*reduction_factor**(m+minimum_early_stopping_rate)) #number of rows to use in the rung
+                print("r_m", r_m)
+#                sha['number_configurations'], sha['number_rows_in_rung'] = n_m, r_m
+#                sha['time'] = len(list(rungs))
+#                path_use = os.getcwd()
+#                path = path_use.replace(os.sep, '/')
+#                path = path + "/" + "dictionary_info.pkl"
+#                with open(path, 'wb') as f:
+#                    pickle.dump(sha, f)
+                print("X_support", len(X_support))
+                print("y_support", len(y_support))
+                if r_m > maximum_resource:
+                    x, y = X_support, y_support  
+                else:
+                    percentage_row = 1-(r_m*100/maximum_resource/100)
+                    print("percentage_row", percentage_row)
+                    x, _, y, _ = train_test_split(X_support, y_support, test_size=percentage_row, stratify=y_support, random_state=0)
+                print("lenx", len(x))
+                print("leny", len(y))
+                print("Successive Halving Rung", m, "of", rungs) 
+                y_ = y.squeeze() if isinstance(y, pd.DataFrame) else y
+                self._label_encoder = LabelEncoder().fit(y_)
+                if any([isinstance(yi, str) for yi in y_]):
+                    # If target values are `str` we encode them or scikit-learn will complain.
+                    y = self._label_encoder.transform(y_)
+                # print("Sigo en gama Classifier, porcentaje de datos es", 1-SuccessiveHalving[i])
+                self._evaluation_library.determine_sample_indices(stratify=y)
+                super().fit(x, y, *args, **kwargs)
+                
+        else:
+            y_ = y.squeeze() if isinstance(y, pd.DataFrame) else y
+            self._label_encoder = LabelEncoder().fit(y_)
+            if any([isinstance(yi, str) for yi in y_]):
+                # If target values are `str` we encode them or scikit-learn will complain.
+                y = self._label_encoder.transform(y_)
+            # print("Sigo en gama Classifier, porcentaje de datos es", 1-SuccessiveHalving[i])
+            self._evaluation_library.determine_sample_indices(stratify=y)
+            super().fit(x, y, *args, **kwargs)
+            print("Ya terminé en GamaClassifier.py")
+        
+        # Delete pickle folder
+        print("Eliminar folder python")
+        path_use = os.getcwd()
+        path = path_use.replace(os.sep, '/')
+        path = path + "/pickle_gama"
+        try:
+            shutil.rmtree(path)
+        except OSError as e:
+            print("Error: %s - %s." % (e.filename, e.strerror))
+            
+        # # Second delete, decomment   
         #     print("Vamos a evaluar con succesive halving en GamaClassifier")
         #     X_support = x.copy()
         #     y_support = y.copy()
@@ -191,20 +287,33 @@ class GamaClassifier(Gama):
         #     self._evaluation_library.determine_sample_indices(stratify=y)
         #     super().fit(x, y, *args, **kwargs)
         #     print("Ya terminé en GamaClassifier.py")
-            
-        # #******************
-        # #Hasta aqui
         
-        y_ = y.squeeze() if isinstance(y, pd.DataFrame) else y
-        self._label_encoder = LabelEncoder().fit(y_)
-        if any([isinstance(yi, str) for yi in y_]):
-            # If target values are `str` we encode them or scikit-learn will complain.
-            y = self._label_encoder.transform(y_)
-        # print("Sigo en gama Classifier, porcentaje de datos es", 1-SuccessiveHalving[i])
-        self._evaluation_library.determine_sample_indices(stratify=y)
-        super().fit(x, y, *args, **kwargs)
-        print("Ya terminé en GamaClassifier dormiré 20 s.py")
-        time.sleep(20)
+        # # Delete pickle folder
+        # print("Eliminar folder python")
+        # path_use = os.getcwd()
+        # path = path_use.replace(os.sep, '/')
+        # path = path + "/pickle_gama"
+        # try:
+        #     shutil.rmtree(path)
+        # except OSError as e:
+        #     print("Error: %s - %s." % (e.filename, e.strerror))
+        # # Second delete, decomment
+            
+        #******************
+        #Hasta aqui
+        
+        # # segundo punto, descomentar desde aqui
+        # y_ = y.squeeze() if isinstance(y, pd.DataFrame) else y
+        # self._label_encoder = LabelEncoder().fit(y_)
+        # if any([isinstance(yi, str) for yi in y_]):
+        #     # If target values are `str` we encode them or scikit-learn will complain.
+        #     y = self._label_encoder.transform(y_)
+        # # print("Sigo en gama Classifier, porcentaje de datos es", 1-SuccessiveHalving[i])
+        # self._evaluation_library.determine_sample_indices(stratify=y)
+        # super().fit(x, y, *args, **kwargs)
+        # print("Ya terminé en GamaClassifier.py")
+        # # segundo punto, hasta aqui
+        
         # print("dormiré 20 segundos")
         # time.sleep(20)
         # print("Ya desperté")
