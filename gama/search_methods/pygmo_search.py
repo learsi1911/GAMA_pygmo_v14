@@ -4,7 +4,6 @@ Created on Wed Sep 15 17:28:28 2021
 
 @author: 20210595
 """
-
 from gama.genetic_programming.components.individual import Individual
 from gama.genetic_programming.compilers.scikitlearn import compile_individual
 from gama.genetic_programming.components.primitive_node import PrimitiveNode
@@ -14,9 +13,9 @@ from gama.genetic_programming.components.terminal import Terminal
 # Packages for pygmo
 import os
 import pickle
+import uuid
 from shutil import rmtree
 from numpy import genfromtxt
-import uuid
 import numpy as np
 import pygmo as pg
 from pygmo import *
@@ -94,22 +93,51 @@ class SearchPygmo(BaseSearch):
         ) 
 
    
-def loss_function(ops: OperatorSet, ind1: Individual) -> Individual:
-    with AsyncEvaluator() as async_:
-        async_.submit(ops.evaluate, ind1)
-        future = ops.wait_next(async_)
-        if future.exception is None:
-            individual_prototype = future.result.individual
-        return individual_prototype
+def top(elementos = 10):
+    lista_top = []
+    path_use = os.getcwd()
+    path = path_use.replace(os.sep, '/')
+    path = path + "/pickle_gama/"
+    for root, dirs, files, in os.walk(path):
+        for file in files:
+            if file.endswith(".pkl"):
+                if (file=="list_successive_halving.pkl") or (file=="archipelago_champions.pkl"):
+                    print(file)
+                else:
+                    new_f_path = path + file                
+                    try:
+                        new_lista = pickle.load(open(new_f_path, "rb"))
+                    except:
+                        new_lista = []
+                    lista_top = lista_top + new_lista
+    print("len lista_top", len(lista_top))
+    f_vectors = [new_individual.fitness.values[0] for new_individual in lista_top] 
+    for i in range(len(f_vectors)):
+        if f_vectors[i] == -np.inf:
+            f_vectors[i] = 10000
+    f_vectors = np.array(f_vectors)
+    print("Valores para ordenar del fitness", f_vectors)
+    if len(f_vectors) > elementos:
+        #indices_best = f_vectors.argsort()[:10]
+        indices_best = f_vectors.argsort()[-elementos:][::-1]
+        indices_best = indices_best.tolist()
+        print("indices_best", indices_best)
+        lista_ind_numpy = np.array(lista_top)
+        lista_to_return = lista_ind_numpy[indices_best]
+        lista_to_return = lista_to_return.tolist()
+        print("lista_to_return", lista_to_return)
+        print("type lista_to_return", type(lista_to_return))
+        return lista_to_return
+    else:
+        lista_to_return =[]
+        return lista_to_return
 
-class AutoMLProblem():
+class AutoMLProblem(object):
     #save_whiout_evaluation = []
     contador = 0
     def __init__(self, ops, name="individual"):
         self.operator = ops
-        # self.output = output
         self.output = []
-        self.count = 0
         self.name = name
         self.name_previous = name
         self.old_loss = 1000
@@ -157,7 +185,7 @@ class AutoMLProblem():
                 f1 = -1000
         return [-f1]
                 
-                
+
     
     # Define bounds
     def get_bounds(self):
@@ -186,116 +214,141 @@ def pygmo_serach(
     max_n_evaluations: Optional[int] = None,
     population_size: int = 50,
     islands: int = 8,
-    iters: int = 100,
+    iters: int = 5,
     #iters: int = 10,
 ) -> List[Individual]:
     #print(AsyncEvaluator.defaults)   
-    print("------------------------------------------------")
-    print("Iterations new WITHOUT wait_check()", iters)
-    
-    list_archipelagos = []
+    #current_population = output
+    print("Iterations succesive after para AutoMLBenchmark, exceptions", iters)
+    successive = False
     #Create a folder to save the invididuals
     path_use = os.getcwd()
     path = path_use.replace(os.sep, '/')
     path = path + "/pickle_gama"
-        
+
     try: 
-        os.mkdir(path) 
+        #os.mkdir(path) 
+        os.makedirs(path, exist_ok=True)
     except: 
-        rmtree(path)
-        os.mkdir(path) 
+        path = path + "/list_successive_halving.pkl"
+        list_successive_halving = pickle.load(open(path, "rb"))
+        print("len list_successive_halving", len(list_successive_halving))
+        if len(list_successive_halving)==5:
+            eliminar = True
+            
+    # if eliminar:
+    #     path_use = os.getcwd()
+    #     path = path_use.replace(os.sep, '/')
+    #     path = path + "/pickle_gama/"
+    #     for root, dirs, files, in os.walk(path):
+    #         for file in files:
+    #             if file.endswith(".pkl"):
+    #                 name_file = path + file
+    #                 os.remove(name_file)
+    #                 # if file == "buscar.pkl":
+    #                 #     os.remove(file)
     
-    f_vectors = []
+    
+    # if eliminar:
+    #     path_use = os.getcwd()
+    #     path = path_use.replace(os.sep, '/')
+    #     path = path + "/pickle_gama"
+    #     rmtree(path)
+    #     os.mkdir(path)
+    try:
+        if eliminar:
+            path_use = os.getcwd()
+            path = path_use.replace(os.sep, '/')
+            path = path + "/pickle_gama"
+            rmtree(path)
+            os.mkdir(path)
+    except:
+        print("Eliminar no ha sido definida")
+        
     path_use = os.getcwd()
     path = path_use.replace(os.sep, '/')
-    path = path + "/pickle_gama/" + "warm_start" + ".pkl"
-    for individual in start_candidates:
-        result = ops.evaluate(individual)
-        new_ind = result.individual
-        loss = new_ind.fitness.values[0]
-        f_vectors.append(loss)
-        output.append(new_ind)
+    path = path + "/pickle_gama/" + "list_successive_halving.pkl"
+    if os.path.isfile(path):
+        list_successive_halving = pickle.load(open(path, "rb"))
+        if len(list_successive_halving)<5:
+            successive = True
+        elif len(list_successive_halving)==5:
+            eliminar = True
+    
+    
+    if not successive:
+        print("Fist step")
+        lista_successive = [1]
+        path_use = os.getcwd()
+        path = path_use.replace(os.sep, '/')
+        path = path + "/pickle_gama/" + "list_successive_halving.pkl"
         with open(path, 'wb') as f:
-            pickle.dump(output, f)
-        
-    x_vectors = []
-    for i in output:
-        instance_individual_to_vectors = IndividuoVector()
-        new_vector = instance_individual_to_vectors(i)
-        x_vectors.append(new_vector)
-        
-    print("Ya convertí el warm-start en vectores, new method")
-              
-    print("START with pygmo")    
-    algo = pg.algorithm(pg.de(gen = iters))
-    prob = pg.problem(AutoMLProblem(ops))        
-    # The initial population
-    pop = pg.population(prob)
-    for i in range(len(x_vectors)):
-        if f_vectors[i] == -np.inf:
-            f_vectors[i] = -10000
-        pop.push_back(x = x_vectors[i], f = [-f_vectors[i]])
-    # # Descomentar la siguiente linea 
-    #archi = pg.archipelago(n=islands, algo=algo, pop=pop, t=pg.topology(pg.ring()))
-    # # Hasta aqui
-    
-    # archi = pg.archipelago(t=pg.topology(pg.ring()))
-    # archi = pg.archipelago(t=pg.topology(pg.free_form()))
-    archi = pg.archipelago(t=pg.topology(pg.fully_connected()))
-    isl1 = pg.island(algo = pg.algorithm(pg.de(gen = iters)), pop=pop)
-    isl2 = pg.island(algo = pg.algorithm(pg.sade(gen = iters)), pop=pop)
-    isl3 = pg.island(algo = pg.algorithm(pg.de1220(gen = iters)), pop=pop)
-    isl4 = pg.island(algo = pg.algorithm(pg.gwo(gen = iters)), pop=pop)
-    isl5 = pg.island(algo = pg.algorithm(pg.pso(gen = iters)), pop=pop)
-    isl6 = pg.island(algo = pg.algorithm(pg.pso_gen(gen = iters)), pop=pop)
-    isl7 = pg.island(algo = pg.algorithm(pg.sea(gen = iters)), pop=pop)
-    isl8 = pg.island(algo = pg.algorithm(pg.bee_colony(gen = iters)), pop=pop)
-    isls = [isl1, isl2, isl3, isl4, isl5, isl6, isl7, isl8]
-
-    for isl in isls:
-        archi.push_back(isl)
-    print("Acabo de CREAR EL ARCHIPELAGO, EMPEZARÉ A EVOLUCIONAR EN PARALELO")
-    
-    print("CREATION OF THE ARCHIPELAGO, IT WILL START THE EVOLUTION IN PARALLEL")
-    print(archi) 
-    archi.get_champions_f() 
-    print(archi.get_champions_f()) 
-    archi.evolve()
-    archi.wait()
-    archi.wait_check()
-    archi.get_champions_f() 
-    list_archipelagos.append(archi)
-    print("archi.get_champions_f()", archi.get_champions_f()) 
-    print("IT JUST FINISH")
-    print("Vamos a imprimir el archipelago")
-    print(archi)
-    
-                
-    variable_aux = True
-    tolerance = 5e-3
-    contador_archipelagos = 0
-    generations = iters
-    while (variable_aux):
-        contador_archipelagos+=1
-        new_name = "archipelago_iteration_" + str(contador_archipelagos)
-        min_loss_found = min(archi.get_champions_f())
-        print("min_loss_found", min_loss_found)
-        algo = pg.algorithm(pg.de(gen = generations))
-        prob = pg.problem(AutoMLProblem(ops, name=new_name))  
-        f_vector_new = archi.get_champions_f() 
-        x_vectors_new = archi.get_champions_x()        
+            pickle.dump(lista_successive, f)
+            
+        # lista_aux = []
+        f_vectors = []
+        path_use = os.getcwd()
+        path = path_use.replace(os.sep, '/')
+        path = path + "/pickle_gama/" + "warm_start" + ".pkl"
+        for individual in start_candidates:
+            result = ops.evaluate(individual)
+            new_ind = result.individual
+            loss = new_ind.fitness.values[0]
+            f_vectors.append(loss)
+            output.append(new_ind)
+            with open(path, 'wb') as f:
+                pickle.dump(output, f)
+            
+        x_vectors = []
+        for i in output:
+            instance_individual_to_vectors = IndividuoVector()
+            new_vector = instance_individual_to_vectors(i)
+            x_vectors.append(new_vector)
+            
+        print("Ya convertí el warm-start en vectores, new method")
+                  
+        print("START with pygmo")    
+        algo = pg.algorithm(pg.de(gen = iters))
+        prob = pg.problem(AutoMLProblem(ops))    
+        # The initial population
         pop = pg.population(prob)
-        for i in range(len(x_vectors_new)):
-            if f_vector_new[i] == -np.inf:
-                print("Los valores de los mejores, uno de ellos ero -inifito")
-                f_vector_new[i] = np.asarray([10000]) # Es importante porque archi.get_champions_f() vienen como numpys y ya no lo tenemos que cambiar a negativo
-            pop.push_back(x = x_vectors_new[i].tolist(), f = f_vector_new[i].tolist()) # Aqui ya vienen como numpys [], ya no los necesitas meter en [] como al inicio, ni negativos
-        #El agoritmo y problema ya lo tenemos, lo que cambio fue la población
-        # archi = pg.archipelago(n=islands, algo=algo, pop=pop, t=pg.topology(pg.ring()))
-        # archi = pg.archipelago(n=islands, algo=algo, pop=pop, t=pg.topology(pg.free_form()))
-        archi = pg.archipelago(n=islands, algo=algo, pop=pop, t=pg.topology(pg.fully_connected()))
+        for i in range(len(x_vectors)):
+            if f_vectors[i] == -np.inf:
+                f_vectors[i] = -10000
+            pop.push_back(x = x_vectors[i], f = [-f_vectors[i]])
+            
+        # Changes from here
+        r_policy = pg.r_policy(pg.fair_replace(rate=0.5)) # Share 50% of the individulas en each island
+        s_policy = pg.s_policy(udsp=pg.select_best())
+        archi = pg.archipelago(r_pol=r_policy, s_pol=s_policy, t=pg.topology(pg.fully_connected()))
+        broadcast = pg.migration_type(1) # 1 = Broadcast type
+        archi.set_migration_type(broadcast)
+        # To here
+        
+        # archi = pg.archipelago(t=pg.topology(pg.ring()))
+        # archi = pg.archipelago(t=pg.topology(pg.fully_connected()))
+        # archi = pg.archipelago(t=pg.topology(pg.free_form()))
+        # archi = pg.archipelago() # unconnected topology
+        # archi = pg.archipelago(t=pg.topology(pg.base_bgl_topology())) # this doesn't work, is only the base of a topology
+        isl1 = pg.island(algo = pg.algorithm(pg.de(gen = iters)), pop=pop)
+        isl2 = pg.island(algo = pg.algorithm(pg.sade(gen = iters)), pop=pop)
+        isl3 = pg.island(algo = pg.algorithm(pg.de1220(gen = iters)), pop=pop)
+        isl4 = pg.island(algo = pg.algorithm(pg.gwo(gen = iters)), pop=pop)
+        isl5 = pg.island(algo = pg.algorithm(pg.pso(gen = iters)), pop=pop)
+        isl6 = pg.island(algo = pg.algorithm(pg.pso_gen(gen = iters)), pop=pop)
+        isl7 = pg.island(algo = pg.algorithm(pg.sea(gen = iters)), pop=pop)
+        isl8 = pg.island(algo = pg.algorithm(pg.bee_colony(gen = iters)), pop=pop)
+        isls = [isl1, isl2, isl3, isl4, isl5, isl6, isl7, isl8]
+
+        for isl in isls:
+            archi.push_back(isl)
+        print("Acabo de CREAR EL ARCHIPELAGO, EMPEZARÉ A EVOLUCIONAR EN PARALELO")
+            
+        #archi = pg.archipelago(n=islands, algo=algo, pop=pop, t=pg.topology(pg.ring()))
         print("CREATION OF THE ARCHIPELAGO, IT WILL START THE EVOLUTION IN PARALLEL")
         print(archi) 
+        archi.get_champions_f() 
+        print(archi.get_champions_f()) 
         archi.evolve()
         archi.wait()
         archi.wait_check()
@@ -303,44 +356,264 @@ def pygmo_serach(
         print(archi.get_champions_f()) 
         print("IT JUST FINISH")
         print(archi)
-        list_archipelagos.append(archi)
-        new_min_loss_found = min(archi.get_champions_f())
-        print("new_min_loss_found", new_min_loss_found)
-        if (new_min_loss_found > min_loss_found) or ((min_loss_found-new_min_loss_found)<tolerance) or generations < 5:
-        #if (new_min_loss_found > min_loss_found) or ((min_loss_found-new_min_loss_found)<tolerance):
-            variable_aux = False
-        #generations = int(generations*2)
-        generations = int(generations/2)
-     
-    print("Ya terminé los ciclos de los archipelagos")
-    path_use = os.getcwd()
-    path = path_use.replace(os.sep, '/')
-    path = path + "/pickle_gama/"
-    for root, dirs, files, in os.walk(path):
-        for file in files:
-            if file.endswith(".pkl"):
-                new_f_path = path + file                
-                try:
-                    new_lista = pickle.load(open(new_f_path, "rb"))
-                except:
-                    new_lista = []
-                output = output + new_lista
+        print("Let's start with the iterative process")
+        print("len archi.get_champions_f()", len(archi.get_champions_f()))
+        print("len archi.get_champions_x()[0]", len(archi.get_champions_x()[0]))
+        print("len archi.get_champions_x()", len(archi.get_champions_x()))
+    
+            
+        # final_lista = []
+        path_use = os.getcwd()
+        path = path_use.replace(os.sep, '/')
+        path = path + "/pickle_gama/"
+        for root, dirs, files, in os.walk(path):
+            for file in files:
+                if file.endswith(".pkl"):
+                    if (file=="list_successive_halving.pkl") or (file=="archipelago_champions.pkl"):
+                        print(file)
+                    else:
+                        new_f_path = path + file                
+                        try:
+                            new_lista = pickle.load(open(new_f_path, "rb"))
+                        except:
+                            new_lista = []
+                        output = output + new_lista    
         
-                
-    try: 
-        for p in list_archipelagos:
-            x_of_island_champion = p.get_champions_x() #cambiar p por archi
-            print("El archipelago tiene ", len(x_of_island_champion), " nuevos individuos")
-            for k in x_of_island_champion:
-                final_instance = ValuesSearchSpace(k)
-                individual_from_x = final_instance.get_individuals()
-                result = ops.evaluate(individual_from_x)
+        # final_output = []
+        x_of_island_champion = archi.get_champions_x()
+        print("El archipelago tiene ", len(x_of_island_champion), " nuevos individuos")
+        for k in x_of_island_champion:
+            final_instance = ValuesSearchSpace(k)
+            individual_from_x = final_instance.get_individuals()
+            result = ops.evaluate(individual_from_x)
+            new_ind = result.individual
+            output.append(new_ind)
+        path_use = os.getcwd()
+        path = path_use.replace(os.sep, '/')
+        path = path + "/pickle_gama/" + "archipelago_champions.pkl"
+        with open(path, 'wb') as f:
+            pickle.dump(output, f)
+            
+        # final_lista = final_lista + final_output
+        
+        # current_population=final_lista + lista_aux
+        print("Longitud final", len(output))
+    else:
+        print("Successive step")
+        path_use = os.getcwd()
+        path = path_use.replace(os.sep, '/')
+        path = path + "/pickle_gama/" + "list_successive_halving.pkl"
+        list_successive_halving = pickle.load(open(path, "rb"))
+        list_successive_halving.append(1)
+
+        
+        #New warm_start
+        # lista_aux = []
+        # f_vectors = []
+        path_use = os.getcwd()
+        path = path_use.replace(os.sep, '/')
+        path = path + "/pickle_gama/" + "archipelago_champions.pkl"
+        new_warm_start=[]
+        if os.path.isfile(path):
+            print("Voy a usar el archipelago anterior")
+            support_to_successive = top()
+            new_warm_start = pickle.load(open(path, "rb"))
+            output = new_warm_start + support_to_successive
+        else:
+            print("Usaré los individuos")
+            
+            print("Usaré los individuos")
+            # warm starting only 10 individuals
+            
+            # lista_aux = []
+            
+            f_vectors = []
+            path_use = os.getcwd()
+            path = path_use.replace(os.sep, '/')
+            path = path + "/pickle_gama/" + "warm_start" + ".pkl"
+            # for individual in start_candidates:
+            for i in range(10):
+                result = ops.evaluate(start_candidates[i])
+#                new_ind = result.start_candidates[i]
                 new_ind = result.individual
+                loss = new_ind.fitness.values[0]
+                f_vectors.append(loss)
                 output.append(new_ind)
-    except: 
-        print("Entré a la excepeción, necesito imprimir el archipelago", archi)
+                with open(path, 'wb') as f:
+                    pickle.dump(output, f)
+                    
+            print("############################################")
+            
+            for por in output:
+                print(por)
+            
+            print("############################################")
+                
+            print("Ya convertí el warm-start en vectores successive, new method")
+                                
+            output = output + top(elementos=10)
+            if len(output) == 0:
+                path_use = os.getcwd()
+                path = path_use.replace(os.sep, '/')
+                path = path + "/pickle_gama/"
+                for root, dirs, files, in os.walk(path):
+                    for file in files:
+                        print(file)
+                        if file.endswith(".pkl"):
+                            new_f_path = path + file
+                            if (file=="list_successive_halving.pkl"):
+                                print("This won't be take in consideration")
+                            #new_lista = pickle.load(open(new_f_path, "rb"))
+                            else:
+                                try:
+                                    new_lista = pickle.load(open(new_f_path, "rb"))
+                                    #print("imprimiento new_lista gama.py", new_lista)
+                                except:
+                                    print("Exception", file)
+                                    new_lista = []
+                                output = output + new_lista
+                            
+         #Remove all the .pkl files
+        path_use = os.getcwd()
+        path = path_use.replace(os.sep, '/')
+        path = path + "/pickle_gama/"
+        for root, dirs, files, in os.walk(path):
+            for file in files:
+                if file.endswith(".pkl"):
+                    name_file = path + file
+                    os.remove(name_file)
+        #             # if file == "buscar.pkl":
+        #             #     os.remove(file)
+            
+        path_use = os.getcwd()
+        path = path_use.replace(os.sep, '/')
+        path = path + "/pickle_gama/" + "list_successive_halving.pkl"
+        with open(path, 'wb') as f:
+            pickle.dump(list_successive_halving, f)
+          
+        #Now use the previous individuals as new war_start in the archipelago
+        f_vectors = [new_individual.fitness.values[0] for new_individual in output]            
+        x_vectors = []
+        for i in output:
+            instance_individual_to_vectors = IndividuoVector()
+            new_vector = instance_individual_to_vectors(i)
+            x_vectors.append(new_vector)
+            
+        print("Ya convertí el warm-start en vectores, new method")
+                  
+        print("START with pygmo")    
+        #new_iters=iters
+        new_iters = int(iters*len(list_successive_halving))
+        print("new_iters", new_iters)
+        print("len list_successive_halving", len(list_successive_halving))
+        print("new_iters", new_iters)
+        algo = pg.algorithm(pg.de(gen = new_iters))
+        prob = pg.problem(AutoMLProblem(ops))        
+        # The initial population
+        pop = pg.population(prob)
+        for i in range(len(x_vectors)):
+            if f_vectors[i] == -np.inf:
+                f_vectors[i] = -10000
+            pop.push_back(x = x_vectors[i], f = [-f_vectors[i]])
+            
+        # # Changes from here
+        r_policy = pg.r_policy(pg.fair_replace(rate=0.5)) # Share 50% of the individulas en each island
+        s_policy = pg.s_policy(udsp=pg.select_best())
+        archi = pg.archipelago(r_pol=r_policy, s_pol=s_policy, t=pg.topology(pg.fully_connected()))
+        broadcast = pg.migration_type(1) # 1 = Broadcast type
+        archi.set_migration_type(broadcast)
+        # To here
+        
+        # archi = pg.archipelago(t=pg.topology(pg.ring()))
+        # archi = pg.archipelago(t=pg.topology(pg.fully_connected()))
+        # archi = pg.archipelago(t=pg.topology(pg.free_form()))
+        # archi = pg.archipelago() # unconnected topology
+        # archi = pg.archipelago(t=pg.topology(pg.base_bgl_topology())) # this doesn't work, is only the base of a topology
+        isl1 = pg.island(algo = pg.algorithm(pg.de(gen = iters)), pop=pop)
+        isl2 = pg.island(algo = pg.algorithm(pg.sade(gen = iters)), pop=pop)
+        isl3 = pg.island(algo = pg.algorithm(pg.de1220(gen = iters)), pop=pop)
+        isl4 = pg.island(algo = pg.algorithm(pg.gwo(gen = iters)), pop=pop)
+        isl5 = pg.island(algo = pg.algorithm(pg.pso(gen = iters)), pop=pop)
+        isl6 = pg.island(algo = pg.algorithm(pg.pso_gen(gen = iters)), pop=pop)
+        isl7 = pg.island(algo = pg.algorithm(pg.sea(gen = iters)), pop=pop)
+        isl8 = pg.island(algo = pg.algorithm(pg.bee_colony(gen = iters)), pop=pop)
+        isls = [isl1, isl2, isl3, isl4, isl5, isl6, isl7, isl8]
+
+        for isl in isls:
+            archi.push_back(isl)
+        print("Acabo de CREAR EL ARCHIPELAGO, EMPEZARÉ A EVOLUCIONAR EN PARALELO")
+        
+        #archi = pg.archipelago(n=islands, algo=algo, pop=pop, t=pg.topology(pg.ring()))
+        print("CREATION OF THE ARCHIPELAGO, IT WILL START THE EVOLUTION IN PARALLEL")
+        print(archi) 
+        archi.get_champions_f() 
+        print(archi.get_champions_f()) 
+        archi.evolve()
+        archi.wait()
+        archi.wait_check()
+        archi.get_champions_f() 
+        print(archi.get_champions_f()) 
+        print("IT JUST FINISH")
+        print(archi)
+        print("Let's start with the iterative process")
+        print("len archi.get_champions_f()", len(archi.get_champions_f()))
+        print("len archi.get_champions_x()[0]", len(archi.get_champions_x()[0]))
+        print("len archi.get_champions_x()", len(archi.get_champions_x()))
     
-    
-    print("Longitud final", len(output))
+            
+        # final_lista = []
+        path_use = os.getcwd()
+        path = path_use.replace(os.sep, '/')
+        path = path + "/pickle_gama/"
+        for root, dirs, files, in os.walk(path):
+            for file in files:
+                if file.endswith(".pkl"):
+                    if (file=="list_successive_halving.pkl") or (file=="archipelago_champions.pkl"):
+                        print(file)
+                    else:
+                        new_f_path = path + file                
+                        try:
+                            new_lista = pickle.load(open(new_f_path, "rb"))
+                        except:
+                            new_lista = []
+                        output = output + new_lista    
+        
+        final_output = []
+        x_of_island_champion = archi.get_champions_x()
+        print("El archipelago tiene ", len(x_of_island_champion), " nuevos individuos")
+        for k in x_of_island_champion:
+            final_instance = ValuesSearchSpace(k)
+            individual_from_x = final_instance.get_individuals()
+            result = ops.evaluate(individual_from_x)
+            new_ind = result.individual
+            final_output.append(new_ind)
+        path_use = os.getcwd()
+        path = path_use.replace(os.sep, '/')
+        path = path + "/pickle_gama/" + "archipelago_champions.pkl"
+        with open(path, 'wb') as f:
+            pickle.dump(final_output, f)
+            
+        output = output + final_output
+        # current_population=final_lista + new_warm_start
+        print("Longitud final", len(output))
+        
     return output
+
+
+    # import os
+    # import pickle
+    # path_use = os.getcwd()
+    # path = path_use.replace(os.sep, '/')
+    # path = path + "/list_successive_halving.pkl"  
+    # lista = [1,1,1,1,1]
+    # with open(path, 'wb') as f:
+    #     pickle.dump(lista, f)    
+    # # for root, dirs, files, in os.walk(path):
+    # #     for file in files:
+    # #         if file.endswith(".pkl"):
+    # #             print(file)
+    # #             # if file == "buscar.pkl":
+    # #             #     os.remove(file)
+                
+    # # path = path + "/"+ "list_successive_halving.pkl"
     # # list_successive_halving = pickle.load(open(path, "rb"))
