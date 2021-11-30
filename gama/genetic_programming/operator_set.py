@@ -43,7 +43,7 @@ class OperatorSet:
     def evaluate(self, *args, **kwargs):
         evaluation = self._evaluate(*args, **kwargs)
         if self._evaluate_callback:
-            print("call callback from ops")
+            # print("call callback from ops")
             self._evaluate_callback(evaluation)
         return evaluation
 
