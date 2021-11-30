@@ -4,6 +4,12 @@ Created on Wed Sep 15 17:28:28 2021
 
 @author: 20210595
 """
+# -*- coding: utf-8 -*-
+"""
+Created on Wed Sep 15 17:28:28 2021
+
+@author: 20210595
+"""
 from gama.genetic_programming.components.individual import Individual
 from gama.genetic_programming.compilers.scikitlearn import compile_individual
 from gama.genetic_programming.components.primitive_node import PrimitiveNode
@@ -113,6 +119,7 @@ def top(elementos = 10):
     print("len lista_top", len(lista_top))
     f_vectors = [new_individual.fitness.values[0] for new_individual in lista_top] 
     for i in range(len(f_vectors)):
+        print(f_vectors[i])
         if f_vectors[i] == -np.inf:
             f_vectors[i] = 10000
     f_vectors = np.array(f_vectors)
@@ -154,32 +161,32 @@ class AutoMLProblem(object):
         instance_individual = ValuesSearchSpace(x)
         individual_from_x = instance_individual.get_individuals()
         if individual_from_x == None:
-            print("El individuo era None")
+            #print("El individuo era None")
             f1 = -1000
         else:
             try:
                 if individual_from_x != None:
                     individual_to_use = self._loss_function(self.operator, individual_from_x)
-                    print("Individual evaluated with PyGMO Search Multi-Archipelago 50 generations", individual_to_use)
+                    #print("Individual evaluated with PyGMO Search Multi-Archipelago 50 generations", individual_to_use)
                     f1 = individual_to_use.fitness.values[0]
                     if f1 == -np.inf:
                         f1 = -1000
                     if -f1 < self.old_loss:
                         self.old_loss = -f1
-                        print("The loss is lower than the previous one", self.old_loss)
+                        #print("The loss is lower than the previous one", self.old_loss)
                         self.output.append(individual_to_use)
                         
-                        print("El camino es: ", path)
+                        #print("El camino es: ", path)
                         self.name = self.name_previous + str(uuid.uuid4())
                         path_use = os.getcwd()
                         path = path_use.replace(os.sep, '/')
                         path = path + "/pickle_gama/" + self.name + ".pkl"
-                        print("Nuevo camino es: ", path)
+                        #print("Nuevo camino es: ", path)
                                 
                         with open(path, 'wb') as f:
                             pickle.dump(self.output, f)
                 else:
-                    print("Voy a imprimir el individuo", individual_to_use)
+                    #print("Voy a imprimir el individuo", individual_to_use)
                     f1 = -1000
             except:
                 f1 = -1000
@@ -195,7 +202,7 @@ class AutoMLProblem(object):
     
     def _loss_function(self, ops: OperatorSet, ind1: Individual) -> Individual:
         #individual = ops.evaluate(ind1).individual
-        print("Hi Pieter", **AsyncEvaluator.defaults)
+        #print("Hi Pieter", **AsyncEvaluator.defaults)
         #help(ops.evaluate)
         result = ops.evaluate(ind1)
         #result = ops.evaluate(ind1, **AsyncEvaluator.defaults)
@@ -317,18 +324,18 @@ def pygmo_serach(
                 f_vectors[i] = -10000
             pop.push_back(x = x_vectors[i], f = [-f_vectors[i]])
             
-        # Changes from here
-        r_policy = pg.r_policy(pg.fair_replace(rate=0.5)) # Share 50% of the individulas en each island
-        s_policy = pg.s_policy(udsp=pg.select_best())
-        archi = pg.archipelago(r_pol=r_policy, s_pol=s_policy, t=pg.topology(pg.fully_connected()))
-        broadcast = pg.migration_type(1) # 1 = Broadcast type
-        archi.set_migration_type(broadcast)
-        # To here
+        # # Changes from here
+        # r_policy = pg.r_policy(pg.fair_replace(rate=0.5)) # Share 50% of the individulas en each island
+        # s_policy = pg.s_policy(udsp=pg.select_best())
+        # archi = pg.archipelago(r_pol=r_policy, s_pol=s_policy, t=pg.topology(pg.fully_connected()))
+        # broadcast = pg.migration_type(1) # 1 = Broadcast type
+        # archi.set_migration_type(broadcast)
+        # # To here
         
         # archi = pg.archipelago(t=pg.topology(pg.ring()))
         # archi = pg.archipelago(t=pg.topology(pg.fully_connected()))
         # archi = pg.archipelago(t=pg.topology(pg.free_form()))
-        # archi = pg.archipelago() # unconnected topology
+        archi = pg.archipelago() # unconnected topology
         # archi = pg.archipelago(t=pg.topology(pg.base_bgl_topology())) # this doesn't work, is only the base of a topology
         isl1 = pg.island(algo = pg.algorithm(pg.de(gen = iters)), pop=pop)
         isl2 = pg.island(algo = pg.algorithm(pg.sade(gen = iters)), pop=pop)
@@ -517,17 +524,17 @@ def pygmo_serach(
             pop.push_back(x = x_vectors[i], f = [-f_vectors[i]])
             
         # # Changes from here
-        r_policy = pg.r_policy(pg.fair_replace(rate=0.5)) # Share 50% of the individulas en each island
-        s_policy = pg.s_policy(udsp=pg.select_best())
-        archi = pg.archipelago(r_pol=r_policy, s_pol=s_policy, t=pg.topology(pg.fully_connected()))
-        broadcast = pg.migration_type(1) # 1 = Broadcast type
-        archi.set_migration_type(broadcast)
-        # To here
+        # r_policy = pg.r_policy(pg.fair_replace(rate=0.5)) # Share 50% of the individulas en each island
+        # s_policy = pg.s_policy(udsp=pg.select_best())
+        # archi = pg.archipelago(r_pol=r_policy, s_pol=s_policy, t=pg.topology(pg.fully_connected()))
+        # broadcast = pg.migration_type(1) # 1 = Broadcast type
+        # archi.set_migration_type(broadcast)
+        # # To here
         
         # archi = pg.archipelago(t=pg.topology(pg.ring()))
         # archi = pg.archipelago(t=pg.topology(pg.fully_connected()))
         # archi = pg.archipelago(t=pg.topology(pg.free_form()))
-        # archi = pg.archipelago() # unconnected topology
+        archi = pg.archipelago() # unconnected topology
         # archi = pg.archipelago(t=pg.topology(pg.base_bgl_topology())) # this doesn't work, is only the base of a topology
         isl1 = pg.island(algo = pg.algorithm(pg.de(gen = iters)), pop=pop)
         isl2 = pg.island(algo = pg.algorithm(pg.sade(gen = iters)), pop=pop)
@@ -598,22 +605,3 @@ def pygmo_serach(
         print("Longitud final", len(output))
         
     return output
-
-
-    # import os
-    # import pickle
-    # path_use = os.getcwd()
-    # path = path_use.replace(os.sep, '/')
-    # path = path + "/list_successive_halving.pkl"  
-    # lista = [1,1,1,1,1]
-    # with open(path, 'wb') as f:
-    #     pickle.dump(lista, f)    
-    # # for root, dirs, files, in os.walk(path):
-    # #     for file in files:
-    # #         if file.endswith(".pkl"):
-    # #             print(file)
-    # #             # if file == "buscar.pkl":
-    # #             #     os.remove(file)
-                
-    # # path = path + "/"+ "list_successive_halving.pkl"
-    # # list_successive_halving = pickle.load(open(path, "rb"))
