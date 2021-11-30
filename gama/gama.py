@@ -1,3 +1,10 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Mon Nov 29 20:50:02 2021
+
+@author: Lenovo
+"""
+
 import shutil
 from abc import ABC
 from collections import defaultdict
@@ -165,21 +172,14 @@ class Gama(ABC):
              - 'logs': keep only the logs
              - 'all': keep logs and cache with models and predictions
         """
-        print("PyGMO added to GAMA")
-        # Gama._counter += 1
-        # self.id_counter = Gama._counter
-        # print("self.id_counter", self.id_counter)
-        # print("max_eval_time", max_total_time)
-#        # Descomentar/comentar lo siguiente
-#        print("max_eval_time", max_total_time)
-#        if max_total_time is not None:
-#            max_total_time = int(max_total_time/6)
-#        print("New time is", max_total_time)
-#        # Hasta aqui
-        
-        self._max_total_time_support = max_total_time
-        self._max_eval_time_support = max_eval_time
-        
+        sha = {}
+        sha["time"] = max_total_time
+        path_use = os.getcwd()
+        path = path_use.replace(os.sep, '/')
+        path = path + "/" + "dictionary_info.pkl"
+        with open(path, 'wb') as f:
+                pickle.dump(sha, f)
+                
         if not output_directory:
             output_directory = f"gama_{str(uuid.uuid4())}"
         self.output_directory = os.path.abspath(os.path.expanduser(output_directory))
@@ -235,16 +235,16 @@ class Gama(ABC):
                 logfile=os.path.join(self.output_directory, "memory.log"),
             ),
         )
-#        if max_eval_time is None:
-#            max_eval_time = round(0.1 * max_total_time)
-#        if max_eval_time > max_total_time:
-#            log.warning(
-#                f"max_eval_time ({max_eval_time}) > max_total_time ({max_total_time}) "
-#                f"is not allowed. max_eval_time set to {max_total_time}."
-#            )
-#            max_eval_time = max_total_time
-#        self._max_eval_time = max_eval_time
-#        self._time_manager = TimeKeeper(max_total_time)
+        if max_eval_time is None:
+            max_eval_time = round(0.1 * max_total_time)
+        if max_eval_time > max_total_time:
+            log.warning(
+                f"max_eval_time ({max_eval_time}) > max_total_time ({max_total_time}) "
+                f"is not allowed. max_eval_time set to {max_total_time}."
+            )
+            max_eval_time = max_total_time
+        self._max_eval_time = max_eval_time
+        self._time_manager = TimeKeeper(max_total_time)
         self._metrics: Tuple[Metric, ...] = scoring_to_metric(scoring)
         self._regularize_length = regularize_length
         self._search_method: BaseSearch = search
@@ -492,27 +492,25 @@ class Gama(ABC):
             A list of individual to start the search  procedure with.
             If None is given, random start candidates are generated.
         """
-#        self._max_total_time_support = max_total_time
-#        self._max_eval_time_support = max_eval_time
-        path_use = os.getcwd()
-        path=path_use.replace(os.sep, '/')
-        path=path + "/" + "dictionary_info.pkl"
-        if os.path.isfile(path):  
-            sha = pickle.load(open(path, "rb"))
-            print("max_total_time gama", self._max_total_time_support)
-            self._max_total_time_support = math.floor(self._max_total_time_support/sha['time'])
-            print("max_total_time gama", self._max_total_time_support)
-            if self._max_eval_time_support is None:
-                self._max_eval_time_support = round(0.1 * self._max_total_time_support)
-            if self._max_eval_time_support > self._max_total_time_support:
-                log.warning(
-                    f"self._max_eval_time_support ({self._max_eval_time_support}) > self._max_total_time_support ({self._max_total_time_support}) "
-                    f"is not allowed. self._max_eval_time_support set to {self._max_total_time_support}."
-                )
-                self._max_eval_time_support = self._max_total_time_support
-            self._max_eval_time = self._max_eval_time_support
-            self._time_manager = TimeKeeper(self._max_total_time_support)
-            os.remove(path)
+#        path_use = os.getcwd()
+#        path=path_use.replace(os.sep, '/')
+#        path=path + "/" + "dictionary_info.pkl"
+#        if os.path.isfile(path):  
+#            sha = pickle.load(open(path, "rb"))
+#            print("max_total_time gama", self._max_total_time_support)
+#            self._max_total_time_support = math.floor(self._max_total_time_support/sha['time'])
+#            print("max_total_time gama", self._max_total_time_support)
+#            if self._max_eval_time_support is None:
+#                self._max_eval_time_support = round(0.1 * self._max_total_time_support)
+#            if self._max_eval_time_support > self._max_total_time_support:
+#                log.warning(
+#                    f"self._max_eval_time_support ({self._max_eval_time_support}) > self._max_total_time_support ({self._max_total_time_support}) "
+#                    f"is not allowed. self._max_eval_time_support set to {self._max_total_time_support}."
+#                )
+#                self._max_eval_time_support = self._max_total_time_support
+#            self._max_eval_time = self._max_eval_time_support
+#            self._time_manager = TimeKeeper(self._max_total_time_support)
+#            os.remove(path)
             
         self._time_manager = TimeKeeper(self._time_manager.total_time)
 
@@ -612,58 +610,7 @@ class Gama(ABC):
             pop = self._final_pop
         else:
             pop = [self._operator_set.individual() for _ in range(50)]
-            
-        # print("Start candiates in gama")
-        ## print("Imprimir población en gama.py", len(pop))
-        # ejemplo1 = self._operator_set.individual()
-        ## ejemplo2 = self._operator_set.individual()
-        # print("ejemplo 1", ejemplo1)
-        ## print("ejemplo 2", ejemplo2)
-        # print("main_node type", type(ejemplo1.main_node))
-        # print("main_node", ejemplo1.main_node)
-        # print("main_node TYPE", type(ejemplo1.main_node))
-        # print("main_node_data_node", ejemplo1.main_node._data_node)
-        # print("main_node_data_node TYPE", type(ejemplo1.main_node._data_node))
-        # print("main_node._primitive", ejemplo1.main_node._primitive)
-        # print("main_node._primitive.input", ejemplo1.main_node._primitive.input)
-        # print("main_node._primitive.input TYPE", type(ejemplo1.main_node._primitive.input))
-        # print("main_node._primitive.input TYPE", type(ejemplo1.main_node._primitive.input[0]))
-        # print("main_node._primitive.output", ejemplo1.main_node._primitive.output)
-        # print("main_node._primitive.output TYPE", type(ejemplo1.main_node._primitive.output))
-        # print("main_node._primitive.identifier", ejemplo1.main_node._primitive.identifier)
-        # print("main_node._primitive TYPE", type(ejemplo1.main_node._primitive))
-        # print("main_node._data_node", ejemplo1.main_node._data_node)
-        # print("main_node._data_node TYPE", type(ejemplo1.main_node._data_node))
-        # print("main_node._terminals", ejemplo1.main_node._terminals)
-        # print("main_node._terminals TYPE", type(ejemplo1.main_node._terminals))
-        # print("posicion 1 main_node._terminals", ejemplo1.main_node._terminals[0])
-        # print("posicion 1 main_node._terminals TYPE", type(ejemplo1.main_node._terminals[0]))
-        # print("value main_node._terminals", ejemplo1.main_node._terminals[0].value)
-        # print("output main_node._terminals", ejemplo1.main_node._terminals[0].output)
-        # print("identifier main_node._terminals", ejemplo1.main_node._terminals[0].identifier)
-        # print("identifier main_node._terminals TYPE", type(ejemplo1.main_node._terminals[0].identifier))
 
-        # print("main_node._primitive TYPE", type(ejemplo1.main_node._primitive))
-        # print("main_node._primitive input", ejemplo1.main_node._primitive.input)
-        # print("main_node._primitive.input TYPE", type(ejemplo1.main_node._primitive.input[0]))
-        # print("main_node._primitive output", ejemplo1.main_node._primitive.output)
-        # print("main_node._primitive output TYPE", type(ejemplo1.main_node._primitive.output))
-        # print("main_node._primitive identifier", ejemplo1.main_node._primitive.identifier)
-        
-        ## PRE-PROCESAMIENTO
-        # print("main_node._data_node", ejemplo1.main_node._data_node)
-        # print("main_node._data_node TYPE", type(ejemplo1.main_node._data_node))
-        # print("main_node._data_node TERMINALS", ejemplo1.main_node._data_node._terminals)
-        # print("main_node._data_node.primitive", ejemplo1.main_node._data_node._primitive)
-        # print("main_node._data_node.primitive.input", ejemplo1.main_node._data_node._primitive.input)
-        # print("main_node._data_node.primitive.input TYPE", type(ejemplo1.main_node._data_node._primitive.input))
-        # print("main_node._data_node.primitive.output", ejemplo1.main_node._data_node._primitive.output)
-        # print("main_node._data_node.primitive.output TYPE", type(ejemplo1.main_node._data_node._primitive.output))
-        # print("main_node._data_node.primitive.identifier (callable)", ejemplo1.main_node._data_node._primitive.identifier)
-        # print("main_node._data_node.primitive.identifier (callable) TYPE", type(ejemplo1.main_node._data_node._primitive.identifier))
-        
-        #for i in pop:
-        #    print(i)
         deadline = time.time() + timeout
         print("deadline", deadline)
         evaluate_pipeline = partial(
@@ -672,13 +619,8 @@ class Gama(ABC):
             y_train=self._y,
             metrics=self._metrics,
         )
-        #print("evaluate_pipeline")
-        #print(evaluate_pipeline)
+
         AsyncEvaluator.defaults = dict(evaluate_pipeline=evaluate_pipeline)
-        #print(AsyncEvaluator.defaults)
-        # print(AsyncEvaluator.defaults.items())
-        #print(list(AsyncEvaluator.defaults.values())[0][0])
-        #print(type(AsyncEvaluator.defaults['evaluate_pipeline']))
         
         self._operator_set._evaluate = partial(
             gama.genetic_programming.compilers.scikitlearn.evaluate_individual,
@@ -688,27 +630,6 @@ class Gama(ABC):
             add_length_to_score=self._regularize_length,
         )
         
-        # ejemplo1 = self._operator_set.individual()
-        # print("ejemplo 1", ejemplo1)
-        # with AsyncEvaluator() as async_:
-        #     async_.submit(self._operator_set.evaluate, ejemplo1)
-        #     future = self._operator_set.evaluate.wait_next(async_)
-        #     if future.result is not None:
-        #         nuevo = future.result.individual
-        #         print("Nuevo a ver si truena", nuevo)
-        
-        # ejemplo1 = self._operator_set.individual()
-        # print("ejemplo 1", ejemplo1)
-        # _newOutput: List[Individual] = []
-        # _check_base_search_hyperparameters(self._operator_set, _newOutput, pop) # Solamente es para ver que todos los elementos en la pop sean tipo Individuals
-        # with AsyncEvaluator() as async_:
-        #     async_.submit(self._operator_set.evaluate, ejemplo1)
-            
-        # ejemplo1 = self._operator_set.individual()
-        # print("ejemplo 1", ejemplo1)
-        # print("ejemplo 1 fitness", ejemplo1.fitness)
-        # print("ejemplo 1 fitness TYPE", type(ejemplo1.fitness))
-        # __________________________________________________________________________
         try:
             with stopit.ThreadingTimeout(timeout):
                 self._search_method.dynamic_defaults(self._x, self._y, timeout)
@@ -737,10 +658,6 @@ class Gama(ABC):
                 self._final_pop = self._search_method.output
                 
         print("ya pasaron los 13 segundos")
-        # Decomment from here
-        # except KeyboardInterrupt:
-        #    log.info("Search phase terminated because of Keyboard Interrupt.")
-        # To here
         self._final_pop = self._search_method.output
         print("Longitud de la población final en gama.py", len(self._final_pop))
         #if isinstance(self._search_method, SearchPygmo) and (len(self._final_pop)==0):
@@ -774,72 +691,6 @@ class Gama(ABC):
         n_evaluations = len(self._evaluation_library.evaluations)
         log.info(f"Search phase evaluated {n_evaluations} individuals.")
         print("log n_evaluations", n_evaluations)
-        #_________________________________________________________________________
-        
-        
-        #******************************************************
-        #Hasta aqui workeaba bien
-        # try:
-        #     with stopit.ThreadingTimeout(timeout):
-        #         print("Voy a evaluar el metodo desde gama.py")
-        #         self._search_method.dynamic_defaults(self._x, self._y, timeout)
-        #         self._search_method.search(self._operator_set, start_candidates=pop)
-        # except KeyboardInterrupt:
-        #     log.info("Search phase terminated because of Keyboard Interrupt.")
-            
-        # # print("Ya terminé las evaluaciones, dormiré 10 segundos")
-        # # time.sleep(10)
-        # # print("Ya dormí 10 segundos")
-        # self._final_pop = self._search_method.output
-        # print("len self._final_pop", len(self._final_pop))
-        # n_evaluations = len(self._evaluation_library.evaluations)
-        # log.info(f"Search phase evaluated {n_evaluations} individuals.")
-        # print("log n_evaluations", n_evaluations)
-        
-        #******************************************************
-        
-        # print("Vamos a matar los procesos en gama.py")
-        # procs = psutil.Process().children()
-        # for p in procs:
-        #     p.terminate()
-        # gone, alive = psutil.wait_procs(procs, timeout=3, callback=on_terminate)
-        # for p in alive:
-        #     p.kill()
-        # print("Ya maté a todos los procesos")
-        #_________________________________________________________________________
-        # for ejemplo1 in self._final_pop:
-        #     print('fitness.values', ejemplo1.fitness.values)
-        #     print('posicion 0 type', ejemplo1.fitness.values[0])
-        # for ejemplo1 in self._final_pop:
-        #     print("ejemplo1", ejemplo1)
-        #     print("main_node type", type(ejemplo1.main_node))
-        #     print("main_node", ejemplo1.main_node)
-        #     print("main_node TYPE", type(ejemplo1.main_node))
-        #     print("main_node_data_node", ejemplo1.main_node._data_node)
-        #     print("main_node_data_node TYPE", type(ejemplo1.main_node._data_node))
-        #     print("main_node._primitive", ejemplo1.main_node._primitive)
-        #     print("main_node._primitive.input", ejemplo1.main_node._primitive.input)
-        #     print("main_node._primitive.input TYPE", type(ejemplo1.main_node._primitive.input))
-        #     #print("main_node._primitive.input TYPE", type(ejemplo1.main_node._primitive.input[0]))
-        #     print("main_node._primitive.output", ejemplo1.main_node._primitive.output)
-        #     print("main_node._primitive.output TYPE", type(ejemplo1.main_node._primitive.output))
-        #     print("main_node._primitive.identifier", ejemplo1.main_node._primitive.identifier)
-        #     print("main_node._primitive TYPE", type(ejemplo1.main_node._primitive))
-        #     print("main_node._data_node", ejemplo1.main_node._data_node)
-        #     print("main_node._data_node TYPE", type(ejemplo1.main_node._data_node))
-        #     print("main_node._terminals", ejemplo1.main_node._terminals)
-        #     print("main_node._terminals TYPE", type(ejemplo1.main_node._terminals))
-
-        # print("Imprimir población final y longitud", len(self._final_pop))
-        # for i in self._final_pop:
-        #    print(i)
-        # print("first element in the final population, gama", self._final_pop[0])
-        # print("first element in the final population, gama TYPE", type(self._final_pop[0]))
-        # print("first element in the final population, gama fitness", self._final_pop[0].fitness)
-        # print("first element in the final population, gama fitness TYPE", type(self._final_pop[0].fitness))
-        # print("first element in the final population, gama fitness values", self._final_pop[0].fitness.values)
-        # print("first element in the final population, gama fitness TYPE values", type(self._final_pop[0].fitness.values))
-        
 
     def export_script(
         self, file: Optional[str] = "gama_pipeline.py", raise_if_exists: bool = False
@@ -909,7 +760,7 @@ class Gama(ABC):
 
     def _on_evaluation_completed(self, evaluation: Evaluation):
         for callback in self._subscribers["evaluation_completed"]:
-            print("starting callback from gama.py")
+            #print("starting callback from gama.py")
             self._safe_outside_call(partial(callback, evaluation))
 
     def evaluation_completed(self, callback: Callable[[Evaluation], Any]) -> None:
