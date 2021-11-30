@@ -197,7 +197,7 @@ class ValuesSearchSpace(object):
         #The last index is the classifier
         list_index_techniques_to_use.append(indexClassifier)
         try:
-            print("list_index_techniques_to_use", list_index_techniques_to_use)
+            # print("list_index_techniques_to_use", list_index_techniques_to_use)
             contador = 0
             for i in list_index_techniques_to_use:
                 if contador == 0:
